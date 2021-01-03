@@ -1,23 +1,27 @@
+use crate::input_recognizer::{is_button_down, is_button_up, recognize_stick_slot};
+use battery_light::get_light_states;
 use joycon_rs::joycon::input_report_mode::standard_full_mode::IMUData;
-use joycon_rs::joycon::input_report_mode::{AnalogStickData, BatteryLevel, StandardInputReport};
+use joycon_rs::joycon::input_report_mode::StandardInputReport;
 use joycon_rs::prelude::lights::*;
 use joycon_rs::prelude::*;
 use std::convert::TryInto;
-use std::f64::consts::PI;
 use std::mem::{size_of, zeroed};
 use win_key_codes::{
     VK_B, VK_CONTROL, VK_E, VK_LMENU, VK_N, VK_O, VK_OEM_4, VK_OEM_6, VK_R, VK_S, VK_SHIFT, VK_Z,
 };
 use winapi::um::winuser::{SendInput, INPUT, INPUT_KEYBOARD, KEYEVENTF_KEYUP, VK_SPACE};
 
+mod battery_light;
+mod input_recognizer;
+
 fn main() {
     let manager = JoyConManager::get_instance();
-    let devices = match manager.lock() {
+    let new_device_receiver = match manager.lock() {
         Ok(manager) => manager.new_devices(),
         Err(_) => return,
     };
 
-    devices
+    new_device_receiver
         .iter()
         .flat_map(|device| SimpleJoyConDriver::new(&device))
         .for_each(|driver| {
@@ -26,59 +30,17 @@ fn main() {
         });
 }
 
-fn judge_stick(
-    slot_count: usize,
-    deg_offset: i32,
-    last_result: Option<usize>,
-    stick: &AnalogStickData,
-) -> Option<usize> {
-    const OFFSET: f64 = -4096.0 / 2.0;
-    const DEAD_ZONE_DOWN: f64 = 800.0;
-    const DEAD_ZONE_UP: f64 = 500.0;
-
-    let x = stick.horizontal as f64 + OFFSET;
-    let y = stick.vertical as f64 + OFFSET;
-
-    let mut deg = (y).atan2(x) / PI * 180.0 + deg_offset as f64;
-    while deg < 0.0 {
-        deg += 360.0;
-    }
-
-    while deg >= 360.0 {
-        deg -= 360.0;
-    }
-
-    let sqr_dist = x * x + y * y;
-
-    if let Some(_) = last_result {
-        if sqr_dist <= DEAD_ZONE_UP * DEAD_ZONE_UP {
-            return None;
-        }
-    } else {
-        if sqr_dist <= DEAD_ZONE_DOWN * DEAD_ZONE_DOWN {
-            return None;
-        }
-    }
-
-    let socket_degrees = 360 / slot_count;
-    for i in 0..slot_count {
-        let from = socket_degrees * i;
-        let to = socket_degrees * (i + 1);
-        if from as f64 <= deg && deg < to as f64 {
-            return Some(i);
-        }
-    }
-
-    return None;
-}
-
 fn process_loop(mut joycon: StandardFullMode<SimpleJoyConDriver>) {
     let mut last_state: StandardInputReport<IMUData> = joycon.read_input_report().unwrap();
-    let mut last_stick = judge_stick(6, 0, None, &last_state.common.left_analog_stick_data);
+    let mut last_stick =
+        recognize_stick_slot(6, 0, None, &last_state.common.left_analog_stick_data);
+    let (light, flash) = get_light_states(last_state.common.battery.level);
+    joycon.driver_mut().set_player_lights(light, flash).unwrap();
+
     loop {
         let state = joycon.read_input_report().unwrap();
         if state.common.battery.level != last_state.common.battery.level {
-            let (light, flash) = get_light_states_from_battery_level(state.common.battery.level);
+            let (light, flash) = get_light_states(state.common.battery.level);
             joycon.driver_mut().set_player_lights(light, flash).unwrap();
         }
 
@@ -150,7 +112,7 @@ fn process_loop(mut joycon: StandardFullMode<SimpleJoyConDriver>) {
             println!("Save");
         }
 
-        let stick = judge_stick(6, 0, last_stick, &state.common.left_analog_stick_data);
+        let stick = recognize_stick_slot(6, 0, last_stick, &state.common.left_analog_stick_data);
         if stick != last_stick {
             match last_stick {
                 Some(3) => {
@@ -205,26 +167,6 @@ fn process_loop(mut joycon: StandardFullMode<SimpleJoyConDriver>) {
     }
 }
 
-fn is_button_down(
-    last_state: &StandardInputReport<IMUData>,
-    state: &StandardInputReport<IMUData>,
-    button: Buttons,
-) -> bool {
-    !is_button_press(last_state, button) && is_button_press(state, button)
-}
-
-fn is_button_up(
-    last_state: &StandardInputReport<IMUData>,
-    state: &StandardInputReport<IMUData>,
-    button: Buttons,
-) -> bool {
-    is_button_press(last_state, button) && !is_button_press(state, button)
-}
-
-fn is_button_press(state: &StandardInputReport<IMUData>, button: Buttons) -> bool {
-    state.common.pushed_buttons.contains(button)
-}
-
 fn send_input(key: i32, down: bool) {
     let mut input = unsafe { zeroed::<INPUT>() };
     input.type_ = INPUT_KEYBOARD;
@@ -245,27 +187,4 @@ fn send_input(key: i32, down: bool) {
             size_of::<INPUT>().try_into().unwrap(),
         )
     };
-}
-
-const EMPTY_LIGHT: [LightUp; 0] = [];
-const EMPTY_FLASH: [Flash; 4] = [Flash::LED0, Flash::LED1, Flash::LED2, Flash::LED3];
-const CRITICAL_LIGHT: [LightUp; 0] = [];
-const CRITICAL_FLASH: [Flash; 1] = [Flash::LED3];
-const LOW_LIGHT: [LightUp; 2] = [LightUp::LED2, LightUp::LED3];
-const LOW_FLASH: [Flash; 0] = [];
-const MEDIUM_LIGHT: [LightUp; 3] = [LightUp::LED1, LightUp::LED2, LightUp::LED3];
-const MEDIUM_FLASH: [Flash; 0] = [];
-const FULL_LIGHT: [LightUp; 4] = [LightUp::LED0, LightUp::LED1, LightUp::LED2, LightUp::LED3];
-const FULL_FLASH: [Flash; 0] = [];
-
-fn get_light_states_from_battery_level(
-    battery_level: BatteryLevel,
-) -> (&'static [LightUp], &'static [Flash]) {
-    match battery_level {
-        BatteryLevel::Empty => (&EMPTY_LIGHT, &EMPTY_FLASH),
-        BatteryLevel::Critical => (&CRITICAL_LIGHT, &CRITICAL_FLASH),
-        BatteryLevel::Low => (&LOW_LIGHT, &LOW_FLASH),
-        BatteryLevel::Medium => (&MEDIUM_LIGHT, &MEDIUM_FLASH),
-        BatteryLevel::Full => (&FULL_LIGHT, &FULL_FLASH),
-    }
 }
