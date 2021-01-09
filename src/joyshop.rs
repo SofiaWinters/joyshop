@@ -4,9 +4,11 @@ use crate::input_recognizer::{is_button_down, is_button_up, recognize_stick_slot
 use crate::key_sender::send_ev;
 use joycon_rs::joycon::input_report_mode::standard_full_mode::IMUData;
 use joycon_rs::joycon::input_report_mode::StandardInputReport;
+use joycon_rs::joycon::joycon_features::JoyConFeature;
 use joycon_rs::prelude::lights::*;
 use joycon_rs::prelude::*;
 use std::sync::{Arc, RwLock};
+use std::time::Instant;
 
 pub fn run_joyshop(config: Arc<RwLock<Box<Config>>>) {
     let manager = JoyConManager::get_instance();
@@ -18,7 +20,8 @@ pub fn run_joyshop(config: Arc<RwLock<Box<Config>>>) {
     new_device_receiver
         .iter()
         .flat_map(|device| SimpleJoyConDriver::new(&device))
-        .for_each(|driver| {
+        .for_each(|mut driver| {
+            driver.enable_feature(JoyConFeature::Vibration).unwrap();
             let joycon = StandardFullMode::new(driver).unwrap();
             let config = config.clone();
             std::thread::spawn(move || handle_joycon_input(joycon, config));
@@ -137,6 +140,20 @@ fn handle_joycon_input(
 
         let stick = recognize_stick_slot(6, 0, last_stick, &state.common.left_analog_stick_data);
         if stick != last_stick {
+            if let Some(_) = stick {
+                joycon
+                    .driver_mut()
+                    .rumble((Some(Rumble::new(100.0, 1.0)), None))
+                    .unwrap();
+
+                let now = Instant::now();
+                while now.elapsed().as_millis() < 30 {}
+                joycon
+                    .driver_mut()
+                    .rumble((Some(Rumble::stop()), None))
+                    .unwrap();
+            }
+
             match last_stick {
                 Some(0) => {
                     send_ev(&config.stick_top_right, false);
