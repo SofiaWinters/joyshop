@@ -21,6 +21,7 @@ pub fn run_joyshop(config: Arc<RwLock<Box<Config>>>) {
         .iter()
         .flat_map(|device| SimpleJoyConDriver::new(&device))
         .for_each(|mut driver| {
+            println!("Joycon Connected");
             driver.enable_feature(JoyConFeature::Vibration).unwrap();
             let joycon = StandardFullMode::new(driver).unwrap();
             let config = config.clone();
@@ -44,7 +45,17 @@ fn handle_joycon_input(
             Err(_) => continue,
         };
 
-        let state = joycon.read_input_report().unwrap();
+        let state = match joycon.read_input_report() {
+            Ok(s) => s,
+            Err(e) => {
+                println!("Joycon error occurred: {:?}", e);
+                match e {
+                    JoyConError::Disconnected => break,
+                    _ => continue,
+                }
+            }
+        };
+
         if state.common.battery.level != last_state.common.battery.level {
             let (light, flash) = get_light_states(state.common.battery.level);
             joycon.driver_mut().set_player_lights(light, flash).unwrap();
