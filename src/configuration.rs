@@ -295,7 +295,7 @@ pub fn load_config_or_default() -> Arc<RwLock<Box<Config>>> {
         }),
         stick_bottom_right: KeyAction::KeyHold(KeyCombination {
             name: "Zoom".into(),
-            key: Key::N,
+            key: Key::Z,
             ctrl: false,
             alt: false,
             shift: false,
@@ -308,14 +308,14 @@ pub fn load_config_or_default() -> Arc<RwLock<Box<Config>>> {
             shift: false,
         }),
         down: KeyAction::None,
-        left: KeyAction::KeyHold(KeyCombination {
+        left: KeyAction::KeyClick(KeyCombination {
             name: "Smaller Brush".into(),
             key: Key::Oem4OpenSquareOrCurlyBracket,
             ctrl: false,
             alt: false,
             shift: false,
         }),
-        right: KeyAction::KeyHold(KeyCombination {
+        right: KeyAction::KeyClick(KeyCombination {
             name: "Larger Brush".into(),
             key: Key::Oem6CloseSquareOrCurlyBracket,
             ctrl: false,
@@ -323,14 +323,14 @@ pub fn load_config_or_default() -> Arc<RwLock<Box<Config>>> {
             shift: false,
         }),
         capture: KeyAction::None,
-        sl: KeyAction::KeyHold(KeyCombination {
+        sl: KeyAction::KeyClick(KeyCombination {
             name: "Undo".into(),
             key: Key::Z,
             ctrl: true,
             alt: false,
             shift: false,
         }),
-        sr: KeyAction::KeyHold(KeyCombination {
+        sr: KeyAction::KeyClick(KeyCombination {
             name: "Redo".into(),
             key: Key::Z,
             ctrl: true,
