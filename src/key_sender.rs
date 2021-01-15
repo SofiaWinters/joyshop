@@ -3,9 +3,23 @@ use crossbeam_channel::Sender;
 use std::convert::TryInto;
 use std::mem::{size_of, zeroed};
 use win_key_codes::{VK_CONTROL, VK_MENU, VK_SHIFT};
-use winapi::um::winuser::{SendInput, INPUT, INPUT_KEYBOARD, KEYEVENTF_KEYUP};
+use winapi::shared::windef::HWND;
+use winapi::um::winuser::{
+    GetForegroundWindow, SendInput, SendMessageW, INPUT, INPUT_KEYBOARD, KEYEVENTF_KEYUP,
+    WM_IME_CONTROL,
+};
+
+extern "system" {
+    fn ImmGetDefaultIMEWnd(hwnd: HWND) -> HWND;
+}
+const IMC_GETOPENSTATUS: usize = 0x06;
 
 pub fn send_ev(key_action: &KeyAction, is_down: bool, tx: &Sender<String>) {
+    unsafe {
+        let ime_window_handle = ImmGetDefaultIMEWnd(GetForegroundWindow());
+        SendMessageW(ime_window_handle, WM_IME_CONTROL, IMC_GETOPENSTATUS, 0);
+    }
+
     if is_down {
         match key_action {
             KeyAction::None => {}
