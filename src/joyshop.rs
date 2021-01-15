@@ -2,6 +2,7 @@ use crate::battery_light::get_light_states;
 use crate::configuration::Config;
 use crate::input_recognizer::{is_button_down, is_button_up, recognize_stick_slot};
 use crate::key_sender::send_ev;
+use ::crossbeam_channel::Sender;
 use joycon_rs::joycon::input_report_mode::standard_full_mode::IMUData;
 use joycon_rs::joycon::input_report_mode::StandardInputReport;
 use joycon_rs::joycon::joycon_features::JoyConFeature;
@@ -10,7 +11,7 @@ use joycon_rs::prelude::*;
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
-pub fn run_joyshop(config: Arc<RwLock<Box<Config>>>) {
+pub fn run_joyshop(config: Arc<RwLock<Box<Config>>>, tx: Sender<String>) {
     let manager = JoyConManager::get_instance();
     let new_device_receiver = match manager.lock() {
         Ok(manager) => manager.new_devices(),
@@ -25,13 +26,15 @@ pub fn run_joyshop(config: Arc<RwLock<Box<Config>>>) {
             driver.enable_feature(JoyConFeature::Vibration).unwrap();
             let joycon = StandardFullMode::new(driver).unwrap();
             let config = config.clone();
-            std::thread::spawn(move || handle_joycon_input(joycon, config));
+            let tx = tx.clone();
+            std::thread::spawn(move || handle_joycon_input(joycon, config, tx));
         });
 }
 
 fn handle_joycon_input(
     mut joycon: StandardFullMode<SimpleJoyConDriver>,
     config: Arc<RwLock<Box<Config>>>,
+    tx: Sender<String>,
 ) {
     let mut last_state: StandardInputReport<IMUData> = joycon.read_input_report().unwrap();
     let mut last_stick =
@@ -62,91 +65,91 @@ fn handle_joycon_input(
         }
 
         if is_button_down(&last_state, &state, Buttons::ZL) {
-            send_ev(&config.zl, true);
+            send_ev(&config.zl, true, &tx);
         }
 
         if is_button_up(&last_state, &state, Buttons::ZL) {
-            send_ev(&config.zl, false);
+            send_ev(&config.zl, false, &tx);
         }
 
         if is_button_down(&last_state, &state, Buttons::L) {
-            send_ev(&config.l, true);
+            send_ev(&config.l, true, &tx);
         }
 
         if is_button_up(&last_state, &state, Buttons::L) {
-            send_ev(&config.l, false);
+            send_ev(&config.l, false, &tx);
         }
 
         if is_button_down(&last_state, &state, Buttons::Minus) {
-            send_ev(&config.minus, true);
+            send_ev(&config.minus, true, &tx);
         }
 
         if is_button_up(&last_state, &state, Buttons::Minus) {
-            send_ev(&config.minus, false);
+            send_ev(&config.minus, false, &tx);
         }
 
         if is_button_down(&last_state, &state, Buttons::LStick) {
-            send_ev(&config.stick, true);
+            send_ev(&config.stick, true, &tx);
         }
 
         if is_button_up(&last_state, &state, Buttons::LStick) {
-            send_ev(&config.stick, false);
+            send_ev(&config.stick, false, &tx);
         }
 
         if is_button_down(&last_state, &state, Buttons::Up) {
-            send_ev(&config.up, true);
+            send_ev(&config.up, true, &tx);
         }
 
         if is_button_up(&last_state, &state, Buttons::Up) {
-            send_ev(&config.up, false);
+            send_ev(&config.up, false, &tx);
         }
 
         if is_button_down(&last_state, &state, Buttons::Down) {
-            send_ev(&config.down, true);
+            send_ev(&config.down, true, &tx);
         }
 
         if is_button_up(&last_state, &state, Buttons::Down) {
-            send_ev(&config.down, false);
+            send_ev(&config.down, false, &tx);
         }
 
         if is_button_down(&last_state, &state, Buttons::Left) {
-            send_ev(&config.left, true);
+            send_ev(&config.left, true, &tx);
         }
 
         if is_button_up(&last_state, &state, Buttons::Left) {
-            send_ev(&config.left, false);
+            send_ev(&config.left, false, &tx);
         }
 
         if is_button_down(&last_state, &state, Buttons::Right) {
-            send_ev(&config.right, true);
+            send_ev(&config.right, true, &tx);
         }
 
         if is_button_up(&last_state, &state, Buttons::Right) {
-            send_ev(&config.right, false);
+            send_ev(&config.right, false, &tx);
         }
 
         if is_button_down(&last_state, &state, Buttons::Capture) {
-            send_ev(&config.capture, true);
+            send_ev(&config.capture, true, &tx);
         }
 
         if is_button_up(&last_state, &state, Buttons::Capture) {
-            send_ev(&config.capture, false);
+            send_ev(&config.capture, false, &tx);
         }
 
         if is_button_down(&last_state, &state, Buttons::SL) {
-            send_ev(&config.sl, true);
+            send_ev(&config.sl, true, &tx);
         }
 
         if is_button_up(&last_state, &state, Buttons::SL) {
-            send_ev(&config.sl, false);
+            send_ev(&config.sl, false, &tx);
         }
 
         if is_button_down(&last_state, &state, Buttons::SR) {
-            send_ev(&config.sr, true);
+            send_ev(&config.sr, true, &tx);
         }
 
         if is_button_up(&last_state, &state, Buttons::SR) {
-            send_ev(&config.sr, false);
+            send_ev(&config.sr, false, &tx);
         }
 
         let stick = recognize_stick_slot(6, 0, last_stick, &state.common.left_analog_stick_data);
@@ -167,44 +170,44 @@ fn handle_joycon_input(
 
             match last_stick {
                 Some(0) => {
-                    send_ev(&config.stick_top_right, false);
+                    send_ev(&config.stick_top_right, false, &tx);
                 }
                 Some(1) => {
-                    send_ev(&config.stick_top_center, false);
+                    send_ev(&config.stick_top_center, false, &tx);
                 }
                 Some(2) => {
-                    send_ev(&config.stick_top_left, false);
+                    send_ev(&config.stick_top_left, false, &tx);
                 }
                 Some(3) => {
-                    send_ev(&config.stick_bottom_left, false);
+                    send_ev(&config.stick_bottom_left, false, &tx);
                 }
                 Some(4) => {
-                    send_ev(&config.stick_bottom_center, false);
+                    send_ev(&config.stick_bottom_center, false, &tx);
                 }
                 Some(5) => {
-                    send_ev(&config.stick_bottom_right, false);
+                    send_ev(&config.stick_bottom_right, false, &tx);
                 }
                 _ => {}
             }
 
             match stick {
                 Some(0) => {
-                    send_ev(&config.stick_top_right, true);
+                    send_ev(&config.stick_top_right, true, &tx);
                 }
                 Some(1) => {
-                    send_ev(&config.stick_top_center, true);
+                    send_ev(&config.stick_top_center, true, &tx);
                 }
                 Some(2) => {
-                    send_ev(&config.stick_top_left, true);
+                    send_ev(&config.stick_top_left, true, &tx);
                 }
                 Some(3) => {
-                    send_ev(&config.stick_bottom_left, true);
+                    send_ev(&config.stick_bottom_left, true, &tx);
                 }
                 Some(4) => {
-                    send_ev(&config.stick_bottom_center, true);
+                    send_ev(&config.stick_bottom_center, true, &tx);
                 }
                 Some(5) => {
-                    send_ev(&config.stick_bottom_right, true);
+                    send_ev(&config.stick_bottom_right, true, &tx);
                 }
                 _ => {}
             }

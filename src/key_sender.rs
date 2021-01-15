@@ -1,10 +1,11 @@
 use crate::configuration::{Key, KeyAction};
+use crossbeam_channel::Sender;
 use std::convert::TryInto;
 use std::mem::{size_of, zeroed};
 use win_key_codes::{VK_CONTROL, VK_MENU, VK_SHIFT};
 use winapi::um::winuser::{SendInput, INPUT, INPUT_KEYBOARD, KEYEVENTF_KEYUP};
 
-pub fn send_ev(key_action: &KeyAction, is_down: bool) {
+pub fn send_ev(key_action: &KeyAction, is_down: bool, tx: &Sender<String>) {
     if is_down {
         match key_action {
             KeyAction::None => {}
@@ -24,6 +25,7 @@ pub fn send_ev(key_action: &KeyAction, is_down: bool) {
                 }
 
                 println!("[Hold] {}", &k.name);
+                tx.send(k.name.clone()).unwrap();
             }
             KeyAction::KeyClick(k) => {
                 if k.alt {
@@ -52,6 +54,7 @@ pub fn send_ev(key_action: &KeyAction, is_down: bool) {
                 }
 
                 println!("[Click] {}", &k.name);
+                tx.send(k.name.clone()).unwrap();
             }
         }
     } else {
