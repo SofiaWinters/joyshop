@@ -24,6 +24,16 @@ pub fn run_joyshop(config: Arc<RwLock<Box<Config>>>, tx: Sender<String>) {
         .for_each(|mut driver| {
             println!("Joycon Connected");
             driver.enable_feature(JoyConFeature::Vibration).unwrap();
+            driver
+                .rumble((Some(Rumble::new(500.0, 1.0)), Some(Rumble::new(500.0, 1.0))))
+                .unwrap();
+
+            let now = Instant::now();
+            while now.elapsed().as_millis() < 500 {}
+            driver
+                .rumble((Some(Rumble::stop()), Some(Rumble::stop())))
+                .unwrap();
+
             let joycon = StandardFullMode::new(driver).unwrap();
             let config = config.clone();
             let tx = tx.clone();
