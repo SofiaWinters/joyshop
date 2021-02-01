@@ -1,5 +1,5 @@
 use crate::battery_light::get_light_states;
-use crate::configuration::Config;
+use crate::configuration::{Config, KeyAction};
 use crate::input_recognizer::{is_button_down, is_button_up, recognize_stick_slot};
 use crate::key_sender::send_ev;
 use ::crossbeam_channel::Sender;
@@ -64,93 +64,16 @@ fn handle_joycon_input(
             joycon.driver_mut().set_player_lights(light, flash).unwrap();
         }
 
-        if is_button_down(&last_state, &state, Buttons::ZL) {
-            send_ev(&config.zl, true, &tx);
-        }
-
-        if is_button_up(&last_state, &state, Buttons::ZL) {
-            send_ev(&config.zl, false, &tx);
-        }
-
-        if is_button_down(&last_state, &state, Buttons::L) {
-            send_ev(&config.l, true, &tx);
-        }
-
-        if is_button_up(&last_state, &state, Buttons::L) {
-            send_ev(&config.l, false, &tx);
-        }
-
-        if is_button_down(&last_state, &state, Buttons::Minus) {
-            send_ev(&config.minus, true, &tx);
-        }
-
-        if is_button_up(&last_state, &state, Buttons::Minus) {
-            send_ev(&config.minus, false, &tx);
-        }
-
-        if is_button_down(&last_state, &state, Buttons::LStick) {
-            send_ev(&config.stick, true, &tx);
-        }
-
-        if is_button_up(&last_state, &state, Buttons::LStick) {
-            send_ev(&config.stick, false, &tx);
-        }
-
-        if is_button_down(&last_state, &state, Buttons::Up) {
-            send_ev(&config.up, true, &tx);
-        }
-
-        if is_button_up(&last_state, &state, Buttons::Up) {
-            send_ev(&config.up, false, &tx);
-        }
-
-        if is_button_down(&last_state, &state, Buttons::Down) {
-            send_ev(&config.down, true, &tx);
-        }
-
-        if is_button_up(&last_state, &state, Buttons::Down) {
-            send_ev(&config.down, false, &tx);
-        }
-
-        if is_button_down(&last_state, &state, Buttons::Left) {
-            send_ev(&config.left, true, &tx);
-        }
-
-        if is_button_up(&last_state, &state, Buttons::Left) {
-            send_ev(&config.left, false, &tx);
-        }
-
-        if is_button_down(&last_state, &state, Buttons::Right) {
-            send_ev(&config.right, true, &tx);
-        }
-
-        if is_button_up(&last_state, &state, Buttons::Right) {
-            send_ev(&config.right, false, &tx);
-        }
-
-        if is_button_down(&last_state, &state, Buttons::Capture) {
-            send_ev(&config.capture, true, &tx);
-        }
-
-        if is_button_up(&last_state, &state, Buttons::Capture) {
-            send_ev(&config.capture, false, &tx);
-        }
-
-        if is_button_down(&last_state, &state, Buttons::SL) {
-            send_ev(&config.sl, true, &tx);
-        }
-
-        if is_button_up(&last_state, &state, Buttons::SL) {
-            send_ev(&config.sl, false, &tx);
-        }
-
-        if is_button_down(&last_state, &state, Buttons::SR) {
-            send_ev(&config.sr, true, &tx);
-        }
-
-        if is_button_up(&last_state, &state, Buttons::SR) {
-            send_ev(&config.sr, false, &tx);
-        }
+        handle_button_action(&last_state, &state, &tx, Buttons::ZL, &config.zl);
+        handle_button_action(&last_state, &state, &tx, Buttons::L, &config.l);
+        handle_button_action(&last_state, &state, &tx, Buttons::Minus, &config.minus);
+        handle_button_action(&last_state, &state, &tx, Buttons::LStick, &config.stick);
+        handle_button_action(&last_state, &state, &tx, Buttons::Up, &config.up);
+        handle_button_action(&last_state, &state, &tx, Buttons::Down, &config.down);
+        handle_button_action(&last_state, &state, &tx, Buttons::Left, &config.left);
+        handle_button_action(&last_state, &state, &tx, Buttons::Right, &config.right);
+        handle_button_action(&last_state, &state, &tx, Buttons::SL, &config.sl);
+        handle_button_action(&last_state, &state, &tx, Buttons::SR, &config.sr);
 
         let stick = recognize_stick_slot(6, 0, last_stick, &state.common.left_analog_stick_data);
         if stick != last_stick {
@@ -214,5 +137,21 @@ fn handle_joycon_input(
         }
         last_state = state;
         last_stick = stick;
+    }
+}
+
+fn handle_button_action(
+    last_state: &StandardInputReport<IMUData>,
+    state: &StandardInputReport<IMUData>,
+    tx: &Sender<String>,
+    button: Buttons,
+    action: &KeyAction,
+) {
+    if is_button_down(last_state, state, button) {
+        send_ev(action, true, tx);
+    }
+
+    if is_button_up(last_state, state, button) {
+        send_ev(action, false, tx);
     }
 }
