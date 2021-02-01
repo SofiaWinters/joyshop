@@ -253,7 +253,37 @@ pub struct Config {
 }
 
 pub fn load_config_or_default() -> Arc<RwLock<Box<Config>>> {
-    let default = Config {
+    let path = "settings.json";
+    let exists = Path::new(path).exists();
+
+    let config = if exists {
+        match read_to_string(path) {
+            Ok(json) => match serde_json::from_str::<Config>(&json) {
+                Ok(cfg) => Some(cfg),
+                Err(e) => {
+                    println!("invalid config file error: {}", e);
+                    None
+                }
+            },
+            Err(e) => {
+                println!("couldn't load file error: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    let config = config.unwrap_or(create_default());
+    if !exists {
+        std::fs::write(path, serde_json::to_string_pretty(&config).unwrap()).unwrap();
+    }
+
+    Arc::new(RwLock::new(Box::new(config)))
+}
+
+fn create_default() -> Config {
+    Config {
         zl: KeyAction::KeyHold(KeyCombination {
             name: "Eraser".into(),
             key: Key::E,
@@ -457,33 +487,5 @@ pub fn load_config_or_default() -> Arc<RwLock<Box<Config>>> {
             alt: false,
             shift: true,
         }),
-    };
-
-    let path = "settings.json";
-    let exists = Path::new(path).exists();
-
-    let config = if exists {
-        match read_to_string(path) {
-            Ok(json) => match serde_json::from_str::<Config>(&json) {
-                Ok(cfg) => Some(cfg),
-                Err(e) => {
-                    println!("invalid config file error: {}", e);
-                    None
-                }
-            },
-            Err(e) => {
-                println!("couldn't load file error: {}", e);
-                None
-            }
-        }
-    } else {
-        None
-    };
-
-    let config = config.unwrap_or(default);
-    if !exists {
-        std::fs::write(path, serde_json::to_string_pretty(&config).unwrap()).unwrap();
     }
-
-    Arc::new(RwLock::new(Box::new(config)))
 }
