@@ -73,8 +73,7 @@ fn handle_joycon_input(
     let mut last_right_stick =
         recognize_stick_slot(6, 0, None, &last_state.common.right_analog_stick_data);
 
-    let (light, flash) = get_light_states(last_state.common.battery.level);
-    joycon.driver_mut().set_player_lights(light, flash).unwrap();
+    let mut last_light_updated = Instant::now();
 
     loop {
         let config = match config.read() {
@@ -92,9 +91,10 @@ fn handle_joycon_input(
             }
         };
 
-        if state.common.battery.level != last_state.common.battery.level {
+        if last_light_updated.elapsed().as_secs() > 10 {
             let (light, flash) = get_light_states(state.common.battery.level);
             joycon.driver_mut().set_player_lights(light, flash).unwrap();
+            last_light_updated = Instant::now();
         }
 
         handle_button_action(&last_state, &state, &tx, true, Buttons::ZL, &config.zl);
