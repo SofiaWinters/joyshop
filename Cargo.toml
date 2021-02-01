@@ -1,6 +1,6 @@
 [package]
 name = "joyshop"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Sofia Winters <a@sofia.win>"]
 edition = "2018"
 
