@@ -7,6 +7,7 @@ A small application to use joycon as a Photoshop's shortcut launcher on windows 
 1. Connect JoyCon via bluetooth.
 2. Run `joyshop.exe`.
 3. Edit `settings.json` generated next to `joyshop.exe`.
+4. After editting, close and rerun the application.
 
 Some pc doesn't have a bluetooth adapter, so you may need a BlueTooth adapter to use JoyCon by your pc.
 
