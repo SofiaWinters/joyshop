@@ -6,21 +6,33 @@ use std::f64::consts::PI;
 pub fn is_button_down(
     last_state: &StandardInputReport<IMUData>,
     state: &StandardInputReport<IMUData>,
+    is_left: bool,
     button: Buttons,
 ) -> bool {
-    !is_button_press(last_state, button) && is_button_press(state, button)
+    !is_button_press(last_state, is_left, button) && is_button_press(state, is_left, button)
 }
 
 pub fn is_button_up(
     last_state: &StandardInputReport<IMUData>,
     state: &StandardInputReport<IMUData>,
+    is_left: bool,
     button: Buttons,
 ) -> bool {
-    is_button_press(last_state, button) && !is_button_press(state, button)
+    is_button_press(last_state, is_left, button) && !is_button_press(state, is_left, button)
 }
 
-pub fn is_button_press(state: &StandardInputReport<IMUData>, button: Buttons) -> bool {
-    state.common.pushed_buttons.contains(button)
+pub fn is_button_press(
+    state: &StandardInputReport<IMUData>,
+    is_left: bool,
+    button: Buttons,
+) -> bool {
+    if is_left {
+        state.common.pushed_buttons.left.contains(&button)
+            || state.common.pushed_buttons.shared.contains(&button)
+    } else {
+        state.common.pushed_buttons.right.contains(&button)
+            || state.common.pushed_buttons.shared.contains(&button)
+    }
 }
 
 pub fn recognize_stick_slot(
