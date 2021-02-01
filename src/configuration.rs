@@ -215,6 +215,8 @@ pub enum KeyAction {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
+    pub show_tooltip: bool,
+
     pub zl: KeyAction,
     pub l: KeyAction,
     pub minus: KeyAction,
@@ -284,6 +286,8 @@ pub fn load_config_or_default() -> Arc<RwLock<Box<Config>>> {
 
 fn create_default() -> Config {
     Config {
+        show_tooltip: true,
+
         zl: KeyAction::KeyHold(KeyCombination {
             name: "Eraser".into(),
             key: Key::E,

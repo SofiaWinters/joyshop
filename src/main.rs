@@ -19,5 +19,5 @@ fn main() {
     let (tx, rx) = unbounded::<String>();
 
     spawn(move || run_joyshop(logic_config, tx));
-    ui::process_ui(rx);
+    ui::process_ui(rx, config.read().unwrap().show_tooltip);
 }
