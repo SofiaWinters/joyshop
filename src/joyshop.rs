@@ -8,7 +8,8 @@ use joycon_rs::joycon::input_report_mode::StandardInputReport;
 use joycon_rs::joycon::joycon_features::JoyConFeature;
 use joycon_rs::prelude::lights::*;
 use joycon_rs::prelude::*;
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard};
+use std::thread::sleep;
 use std::time::Instant;
 
 pub fn run_joyshop(config: Arc<RwLock<Box<Config>>>, tx: Sender<String>) {
@@ -18,27 +19,47 @@ pub fn run_joyshop(config: Arc<RwLock<Box<Config>>>, tx: Sender<String>) {
         Err(_) => return,
     };
 
-    new_device_receiver
-        .iter()
-        .flat_map(|device| SimpleJoyConDriver::new(&device))
-        .for_each(|mut driver| {
-            println!("Joycon Connected");
-            driver.enable_feature(JoyConFeature::Vibration).unwrap();
-            driver
-                .rumble((Some(Rumble::new(500.0, 1.0)), Some(Rumble::new(500.0, 1.0))))
-                .unwrap();
+    new_device_receiver.iter().for_each(|device| {
+        println!("Joycon Connected");
 
-            let now = Instant::now();
-            while now.elapsed().as_millis() < 500 {}
-            driver
-                .rumble((Some(Rumble::stop()), Some(Rumble::stop())))
-                .unwrap();
+        let mut driver = create_driver(&device);
 
-            let joycon = StandardFullMode::new(driver).unwrap();
-            let config = config.clone();
-            let tx = tx.clone();
-            std::thread::spawn(move || handle_joycon_input(joycon, config, tx));
-        });
+        driver
+            .rumble((Some(Rumble::new(500.0, 1.0)), Some(Rumble::new(500.0, 1.0))))
+            .unwrap();
+        let now = Instant::now();
+        while now.elapsed().as_millis() < 500 {}
+        driver
+            .rumble((Some(Rumble::stop()), Some(Rumble::stop())))
+            .unwrap();
+
+        let joycon = StandardFullMode::new(driver).unwrap();
+        let config = config.clone();
+        let tx = tx.clone();
+        std::thread::spawn(move || handle_joycon_input(joycon, config, tx));
+    });
+}
+
+fn create_driver(device: &Arc<Mutex<JoyConDevice>>) -> SimpleJoyConDriver {
+    loop {
+        let mut driver = match SimpleJoyConDriver::new(device) {
+            Ok(d) => d,
+            Err(e) => {
+                println!("JoyCon init error (will retry):{:?}", e);
+                sleep(std::time::Duration::from_millis(100));
+                continue;
+            }
+        };
+
+        match driver.enable_feature(JoyConFeature::Vibration) {
+            Ok(_) => return driver,
+            Err(e) => {
+                println!("JoyCon enable vibration error (will retry):{:?}", e);
+                sleep(std::time::Duration::from_millis(500));
+                continue;
+            }
+        }
+    }
 }
 
 fn handle_joycon_input(
