@@ -42,8 +42,8 @@ pub fn recognize_stick_slot(
     stick: &AnalogStickData,
 ) -> Option<usize> {
     const OFFSET: f64 = -4096.0 / 2.0;
-    const DEAD_ZONE_DOWN: f64 = 800.0;
-    const DEAD_ZONE_UP: f64 = 500.0;
+    const DEAD_ZONE_DOWN: f64 = 1000.0;
+    const DEAD_ZONE_UP: f64 = 900.0;
 
     let x = stick.horizontal as f64 + OFFSET;
     let y = stick.vertical as f64 + OFFSET;
