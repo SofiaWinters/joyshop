@@ -23,21 +23,23 @@ pub fn run_joyshop(config: Arc<RwLock<Box<Config>>>, tx: Sender<String>) {
         println!("Joycon Connected");
 
         let mut driver = create_driver(&device);
-
-        driver
-            .rumble((Some(Rumble::new(500.0, 1.0)), Some(Rumble::new(500.0, 1.0))))
-            .unwrap();
-        let now = Instant::now();
-        while now.elapsed().as_millis() < 500 {}
-        driver
-            .rumble((Some(Rumble::stop()), Some(Rumble::stop())))
-            .unwrap();
-
+        rumble_for_connect(&mut driver);
         let joycon = StandardFullMode::new(driver).unwrap();
         let config = config.clone();
         let tx = tx.clone();
         std::thread::spawn(move || handle_joycon_input(joycon, config, tx));
     });
+}
+
+fn rumble_for_connect(driver: &mut SimpleJoyConDriver) {
+    driver
+        .rumble((Some(Rumble::new(500.0, 1.0)), Some(Rumble::new(500.0, 1.0))))
+        .unwrap();
+    let now = Instant::now();
+    while now.elapsed().as_millis() < 500 {}
+    driver
+        .rumble((Some(Rumble::stop()), Some(Rumble::stop())))
+        .unwrap();
 }
 
 fn create_driver(device: &Arc<Mutex<JoyConDevice>>) -> SimpleJoyConDriver {
@@ -228,109 +230,79 @@ fn handle_stick_action(
     config: &RwLockReadGuard<Box<Config>>,
     is_left: bool,
 ) {
-    if stick != last_stick {
-        if let Some(_) = stick {
-            driver
-                .rumble((Some(Rumble::new(100.0, 1.0)), Some(Rumble::new(100.0, 1.0))))
-                .unwrap();
-
-            let now = Instant::now();
-            while now.elapsed().as_millis() < 30 {}
-            driver
-                .rumble((Some(Rumble::stop()), Some(Rumble::stop())))
-                .unwrap();
-        }
-
-        match last_stick {
-            Some(0) => {
-                if is_left {
-                    send_ev(&config.left_stick_top_right, false, &tx);
-                } else {
-                    send_ev(&config.right_stick_top_right, false, &tx);
-                }
-            }
-            Some(1) => {
-                if is_left {
-                    send_ev(&config.left_stick_top_center, false, &tx);
-                } else {
-                    send_ev(&config.right_stick_top_center, false, &tx);
-                }
-            }
-            Some(2) => {
-                if is_left {
-                    send_ev(&config.left_stick_top_left, false, &tx);
-                } else {
-                    send_ev(&config.right_stick_top_left, false, &tx);
-                }
-            }
-            Some(3) => {
-                if is_left {
-                    send_ev(&config.left_stick_bottom_left, false, &tx);
-                } else {
-                    send_ev(&config.right_stick_bottom_left, false, &tx);
-                }
-            }
-            Some(4) => {
-                if is_left {
-                    send_ev(&config.left_stick_bottom_center, false, &tx);
-                } else {
-                    send_ev(&config.right_stick_bottom_center, false, &tx);
-                }
-            }
-            Some(5) => {
-                if is_left {
-                    send_ev(&config.left_stick_bottom_right, false, &tx);
-                } else {
-                    send_ev(&config.right_stick_bottom_right, false, &tx);
-                }
-            }
-            _ => {}
-        }
-
-        match stick {
-            Some(0) => {
-                if is_left {
-                    send_ev(&config.left_stick_top_right, true, &tx);
-                } else {
-                    send_ev(&config.right_stick_top_right, true, &tx);
-                }
-            }
-            Some(1) => {
-                if is_left {
-                    send_ev(&config.left_stick_top_center, true, &tx);
-                } else {
-                    send_ev(&config.right_stick_top_center, true, &tx);
-                }
-            }
-            Some(2) => {
-                if is_left {
-                    send_ev(&config.left_stick_top_left, true, &tx);
-                } else {
-                    send_ev(&config.right_stick_top_left, true, &tx);
-                }
-            }
-            Some(3) => {
-                if is_left {
-                    send_ev(&config.left_stick_bottom_left, true, &tx);
-                } else {
-                    send_ev(&config.right_stick_bottom_left, true, &tx);
-                }
-            }
-            Some(4) => {
-                if is_left {
-                    send_ev(&config.left_stick_bottom_center, true, &tx);
-                } else {
-                    send_ev(&config.right_stick_bottom_center, true, &tx);
-                }
-            }
-            Some(5) => {
-                if is_left {
-                    send_ev(&config.left_stick_bottom_right, true, &tx);
-                } else {
-                    send_ev(&config.right_stick_bottom_right, true, &tx);
-                }
-            }
-            _ => {}
-        }
+    if stick == last_stick {
+        return;
     }
+
+    if let Some(_) = stick {
+        rumble_for_stick_action(driver);
+    }
+
+    let top_right = if is_left {
+        &config.left_stick_top_right
+    } else {
+        &config.right_stick_top_right
+    };
+
+    let top = if is_left {
+        &config.left_stick_top_center
+    } else {
+        &config.right_stick_top_center
+    };
+
+    let top_left = if is_left {
+        &config.left_stick_top_left
+    } else {
+        &config.right_stick_top_left
+    };
+
+    let bottom_left = if is_left {
+        &config.left_stick_bottom_left
+    } else {
+        &config.right_stick_bottom_left
+    };
+
+    let bottom = if is_left {
+        &config.left_stick_bottom_center
+    } else {
+        &config.right_stick_bottom_center
+    };
+
+    let bottom_right = if is_left {
+        &config.left_stick_bottom_right
+    } else {
+        &config.right_stick_bottom_right
+    };
+
+    match last_stick {
+        Some(0) => send_ev(top_right, false, &tx),
+        Some(1) => send_ev(top, false, &tx),
+        Some(2) => send_ev(top_left, false, &tx),
+        Some(3) => send_ev(bottom_left, false, &tx),
+        Some(4) => send_ev(bottom, false, &tx),
+        Some(5) => send_ev(bottom_right, false, &tx),
+        _ => {}
+    }
+
+    match stick {
+        Some(0) => send_ev(top_right, true, &tx),
+        Some(1) => send_ev(top, true, &tx),
+        Some(2) => send_ev(top_left, true, &tx),
+        Some(3) => send_ev(bottom_left, true, &tx),
+        Some(4) => send_ev(bottom, true, &tx),
+        Some(5) => send_ev(bottom_right, true, &tx),
+        _ => {}
+    }
+}
+
+fn rumble_for_stick_action(driver: &mut SimpleJoyConDriver) {
+    driver
+        .rumble((Some(Rumble::new(100.0, 1.0)), Some(Rumble::new(100.0, 1.0))))
+        .unwrap();
+
+    let now = Instant::now();
+    while now.elapsed().as_millis() < 30 {}
+    driver
+        .rumble((Some(Rumble::stop()), Some(Rumble::stop())))
+        .unwrap();
 }
