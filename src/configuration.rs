@@ -359,7 +359,13 @@ fn create_default() -> Config {
             alt: false,
             shift: false,
         }),
-        down: KeyAction::None,
+        down: KeyAction::KeyHold(KeyCombination {
+            name: "Ctrl + Shift".into(),
+            key: Key::None,
+            ctrl: true,
+            alt: false,
+            shift: true,
+        }),
         left: KeyAction::KeyClick(KeyCombination {
             name: "Smaller Brush".into(),
             key: Key::Oem4OpenSquareOrCurlyBracket,
@@ -374,7 +380,13 @@ fn create_default() -> Config {
             alt: false,
             shift: false,
         }),
-        capture: KeyAction::None,
+        capture: KeyAction::KeyHold(KeyCombination {
+            name: "Ctrl".into(),
+            key: Key::None,
+            ctrl: true,
+            alt: false,
+            shift: false,
+        }),
         left_sl: KeyAction::KeyClick(KeyCombination {
             name: "Undo".into(),
             key: Key::Z,

@@ -128,6 +128,14 @@ fn handle_joycon_input(
         );
         handle_button_action(&last_state, &state, &tx, true, Buttons::SL, &config.left_sl);
         handle_button_action(&last_state, &state, &tx, true, Buttons::SR, &config.left_sr);
+        handle_button_action(
+            &last_state,
+            &state,
+            &tx,
+            true,
+            Buttons::Capture,
+            &config.capture,
+        );
 
         handle_button_action(&last_state, &state, &tx, false, Buttons::ZR, &config.zr);
         handle_button_action(&last_state, &state, &tx, false, Buttons::R, &config.r);
@@ -161,6 +169,7 @@ fn handle_joycon_input(
             Buttons::SR,
             &config.right_sr,
         );
+        handle_button_action(&last_state, &state, &tx, false, Buttons::Home, &config.home);
 
         let left_stick =
             recognize_stick_slot(6, 0, last_left_stick, &state.common.left_analog_stick_data);
